@@ -109,6 +109,39 @@ Then, double-click to open `MarkdownViewer.zip` in Total Commander and follow th
 
 The latest version uses WebView2. If you are using an older operating system, you will need to install the WebView2 runtime.
 
+# Troubleshooting
+
+Debug logging is **off by default**. It is opt-in because the log records the full
+path of every file you preview, along with machine details (OS, .NET and WebView2
+versions), appends without any size limit or rotation, and lives in the shared
+temp directory.
+
+To collect a log, set the environment variable and restart Total Commander
+(TC only inherits environment variables at startup):
+
+```
+setx MARKDOWNVIEWER_DEBUG 1
+```
+
+Reproduce the problem, then read the log:
+
+```
+notepad %TEMP%\MarkdownViewer_debug.log
+```
+
+It records the WebView2 Runtime version, the .NET Framework release, whether
+`markdown_tmpl.txt` / `markdown_css.txt` / `assets` deployed correctly, and any
+exception raised during load or parse.
+
+Turn it back off when you are done, and delete the log if you no longer need it:
+
+```
+setx MARKDOWNVIEWER_DEBUG 0
+```
+
+Recognised "off" values are an unset variable, an empty string, `0`, `false`,
+`no` and `off` (case-insensitive). Any other value enables logging.
+
 # Building from Source
 
 ## Prerequisites

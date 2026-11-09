@@ -8,6 +8,10 @@ namespace MarkdownViewer
     /// <summary>
     /// 文件级调试日志：写入 %TEMP%\MarkdownViewer_debug.log
     ///
+    /// 默认关闭，需要设置环境变量 MARKDOWNVIEWER_DEBUG=1 并重启 Total Commander
+    /// 才会写入（TC 只在启动时继承环境变量）。关闭时所有写入点直接 return，
+    /// 不会产生任何文件、注册表或 WebView2 探测动作。
+    ///
     /// 用途：在新机器上排查"插件装了但无法预览"的问题。
     /// TraceProc 依赖 TC 用户开启"插件日志"，新机器上基本看不到输出；
     /// 文件日志不依赖任何配置，装完插件复现一次即可拿日志分析。
@@ -22,6 +26,50 @@ namespace MarkdownViewer
     {
         private static readonly object lockObj = new object();
         private static string logPath;
+
+        /// <summary>
+        /// 日志总开关：仅当环境变量 MARKDOWNVIEWER_DEBUG 被设置为启用值时才写日志。
+        ///
+        /// 默认关闭的原因：日志会把每个预览过的文件的完整路径、文件大小、编码，
+        /// 以及机器的 OS / .NET / WebView2 版本追加到 %TEMP%\MarkdownViewer_debug.log，
+        /// 且没有上限和轮转，等于在公共临时目录留下一份永久的浏览记录。
+        /// 排查问题时再按需打开即可（见 README 的 Troubleshooting 一节）。
+        ///
+        /// 识别为"关闭"的值：未设置、空串、0、false、no、off（忽略大小写）。
+        /// 其它任何值都视为开启，因此 MARKDOWNVIEWER_DEBUG=1 最常用。
+        /// </summary>
+        private static readonly bool enabled = DetectEnabled();
+
+        /// <summary>
+        /// 是否已启用文件日志（供外部判断，避免无谓地拼接日志字符串）。
+        /// </summary>
+        public static bool Enabled
+        {
+            get { return enabled; }
+        }
+
+        private static bool DetectEnabled()
+        {
+            try
+            {
+                string value = Environment.GetEnvironmentVariable("MARKDOWNVIEWER_DEBUG");
+                if (string.IsNullOrEmpty(value))
+                {
+                    return false;
+                }
+
+                value = value.Trim();
+                return !(value == "0"
+                    || value.Equals("false", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("no", StringComparison.OrdinalIgnoreCase)
+                    || value.Equals("off", StringComparison.OrdinalIgnoreCase));
+            }
+            catch
+            {
+                // 读取环境变量失败（权限受限等）一律按关闭处理
+                return false;
+            }
+        }
 
         public static string LogPath
         {
@@ -44,6 +92,11 @@ namespace MarkdownViewer
 
         public static void Write(string message)
         {
+            if (!enabled)
+            {
+                return;
+            }
+
             try
             {
                 lock (lockObj)
@@ -62,11 +115,21 @@ namespace MarkdownViewer
 
         public static void Write(string format, params object[] args)
         {
+            if (!enabled)
+            {
+                return;
+            }
+
             try { Write(string.Format(format, args)); } catch { }
         }
 
         public static void Exception(string context, Exception ex)
         {
+            if (!enabled)
+            {
+                return;
+            }
+
             try
             {
                 Write("EXCEPTION [{0}]: {1}\r\n    Stack: {2}",
@@ -85,6 +148,11 @@ namespace MarkdownViewer
         /// </summary>
         public static void LogEnvironment(string buildDir)
         {
+            if (!enabled)
+            {
+                return;
+            }
+
             try
             {
                 Write("========== MarkdownViewer 环境自检 ==========");
