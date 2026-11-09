@@ -201,15 +201,28 @@ namespace MarkdownViewer
                     {
                         string url = message.Substring(urlStart, urlEnd - urlStart);
                         url = System.Uri.UnescapeDataString(url);
-                        
-                        TraceLog($"Opening external link: {url}");
-                        
+
+                        // [安全] 只允许把 http/https 链接交给 ShellExecute。
+                        // 本方法处理的是页面 postMessage 过来的任意字符串，而
+                        // UseShellExecute=true 会按系统关联规则执行目标，因此
+                        // file:///C:/...exe、UNC 路径或自定义协议都会被直接启动。
+                        // 必须在 Process.Start 之前校验协议。
+                        Uri targetUri;
+                        if (!Uri.TryCreate(url, UriKind.Absolute, out targetUri) ||
+                            (targetUri.Scheme != Uri.UriSchemeHttp && targetUri.Scheme != Uri.UriSchemeHttps))
+                        {
+                            TraceLog($"Blocked non-http(s) external link: {url}");
+                            return;
+                        }
+
+                        TraceLog($"Opening external link: {targetUri.AbsoluteUri}");
+
                         // Open in default browser
                         try
                         {
                             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                             {
-                                FileName = url,
+                                FileName = targetUri.AbsoluteUri,
                                 UseShellExecute = true
                             });
                         }
