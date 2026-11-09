@@ -106,6 +106,37 @@ flowchart TB
 
 最新版本使用了 WebView2，如果是老版本的操作系统，需要安装 WebView2 的运行时。
 
+# 问题排查
+
+调试日志**默认关闭**。之所以改为按需开启：日志会记录每个预览过的文件的完整路径，
+以及本机的 OS / .NET / WebView2 版本信息，且只追加、没有大小上限和轮转，
+文件还位于所有程序都可读的临时目录下。
+
+需要收集日志时，设置环境变量并**重启 Total Commander**（TC 只在启动时继承环境变量）：
+
+```
+setx MARKDOWNVIEWER_DEBUG 1
+```
+
+复现问题后查看日志：
+
+```
+notepad %TEMP%\MarkdownViewer_debug.log
+```
+
+日志中包含 WebView2 Runtime 版本、.NET Framework 版本、
+`markdown_tmpl.txt` / `markdown_css.txt` / `assets` 是否正确部署，
+以及加载和解析过程中抛出的异常。
+
+排查结束后请关掉，并按需删除日志文件：
+
+```
+setx MARKDOWNVIEWER_DEBUG 0
+```
+
+视为"关闭"的取值：未设置、空串、`0`、`false`、`no`、`off`（忽略大小写）；
+其它任何值都会开启日志。
+
 # 从源码构建
 
 ## 环境要求
