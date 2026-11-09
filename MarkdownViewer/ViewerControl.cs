@@ -712,7 +712,7 @@ namespace MarkdownViewer
                     {
                         try
                         {
-                            return $"{attr}=\"{Uri.UnescapeDataString(url)}\"";
+                            return $"{attr}=\"{ReEscapeAttributeUnsafeChars(Uri.UnescapeDataString(url))}\"";
                         }
                         catch
                         {
@@ -721,6 +721,35 @@ namespace MarkdownViewer
                     }
                     return match.Value;
                 });
+        }
+
+        /// <summary>
+        /// [安全] 把能突破 HTML 属性引号的字符重新转回百分号编码。
+        ///
+        /// DecodeImagePath 的作用是还原 Markdig 对 URL 的百分号编码，让非 ASCII
+        /// 文件名（如中文图片名）能被 WebView2 正确解析。问题在于 Markdig 会把
+        /// `"` 转义成 %22、空格转成 %20，却不转义 `%` 本身，所以文档里原样写入的
+        /// `%22` 能在这一步被还原成真正的引号，从而逃出 href="..." 属性并注入
+        /// onmouseover= 之类的事件处理器 —— DisableHtml() 拦不住它。
+        ///
+        /// 这里只把这几个危险字符重新编码，其它字符（含中文）保持解码后的原样，
+        /// 既保住原功能，又让属性逃逸不可能发生。注意不要动 `&`：此时字符串里的
+        /// `&amp;` 是 Markdig 已经写好的 HTML 实体，再处理会造成双重编码。
+        /// </summary>
+        private static String ReEscapeAttributeUnsafeChars(String url)
+        {
+            if (String.IsNullOrEmpty(url))
+            {
+                return url;
+            }
+
+            return url
+                .Replace("%", "%25")   // 必须放在第一位，否则会把下面新生成的 %XX 再次编码
+                .Replace("\"", "%22")
+                .Replace("'", "%27")
+                .Replace("<", "%3C")
+                .Replace(">", "%3E")
+                .Replace("`", "%60");
         }
 
         /// <summary>
