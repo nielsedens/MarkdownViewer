@@ -625,8 +625,31 @@ namespace MarkdownViewer
                 using (var sr = new StreamReader(new MemoryStream(fileBytes), detectedEncoding, true))
                 {
                     String markdownContent = sr.ReadToEnd();
+                    // [安全] 这里故意不使用 UseAdvancedExtensions()，它会启用两个
+                    // 对不可信文档有风险的扩展：
+                    //   * GenericAttributes —— 允许文档用 {key="value"} 语法写入任意
+                    //     HTML 属性。Markdig 只转义属性值、不过滤属性名，因此
+                    //     `# 标题{onmouseover="..."}` 可以注入事件处理器，
+                    //     DisableHtml() 并不能拦住它。
+                    //   * MediaLinks —— 把指向 YouTube/Vimeo 等站点的链接渲染成真实的
+                    //     远程 <iframe>，打开文档即产生第三方网络请求。
+                    // 其余 advanced 扩展逐个显式启用，功能与之前保持一致。
                     var pipeline = new MarkdownPipelineBuilder()
-                        .UseAdvancedExtensions()
+                        .UseAbbreviations()
+                        .UseAutoIdentifiers()
+                        .UseCitations()
+                        .UseCustomContainers()
+                        .UseDefinitionLists()
+                        .UseEmphasisExtras()
+                        .UseFigures()
+                        .UseFooters()
+                        .UseGridTables()
+                        .UseMathematics()
+                        .UsePipeTables()
+                        .UseListExtras()
+                        .UseTaskLists()
+                        .UseDiagrams()
+                        .UseAutoLinks()
                         .UseEmojiAndSmiley()
                         .UseYamlFrontMatter()
                         .UseFootnotes()
