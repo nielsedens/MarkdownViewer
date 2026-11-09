@@ -4,6 +4,16 @@
 <!-- fixed cannot preview local image problem -->
   <base href="{0}/" />
   <meta charset="utf-8">
+  <!-- [安全] 内容安全策略：预览页在 file:// 下运行，且 WebView2 以
+       --allow-file-access-from-files 启动，因此必须限制页面的取值来源。
+       default-src 'none' + 仅放行 file: 的脚本/样式/字体/图片，可以做到：
+         1. 阻止文档内容触发的任何联网请求（远程图片、跟踪像素、iframe）；
+         2. connect-src 'none' 阻止 XHR/fetch 读取本地文件并外传。
+       script-src 必须保留 'unsafe-inline'：模板自身使用内联 <script> 和
+       onclick/onload 内联事件，所以本策略不是 XSS 防线，而是"即使脚本被
+       注入也拿不到网络和本地文件"的兜底。
+       如需显示远程图片，在 img-src 后追加 https: 。 -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src file: data: blob:; style-src file: 'unsafe-inline'; script-src file: 'unsafe-inline'; font-src file: data:; media-src file:; connect-src 'none'; frame-src 'none'; object-src 'none'; form-action 'none'">
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <style>{1}</style>
